@@ -2,30 +2,40 @@
   (:require clojure.contrib.duck-streams)
   (:use clojure-csv.core))
 
-(defn usage-map-from-csv [path usage-map-building-fn]
+(defn- user-in [csv-entry] (nth csv-entry 0))
+
+(defn- tab-in [csv-entry] (nth csv-entry 3))
+
+(defn map-from-csv [path map-building-fn]
   (with-open [rdr (java.io.BufferedReader. 
                    (java.io.FileReader. path))]
     (let [all-lines (line-seq rdr)
           all-entries (map (comp first parse-csv) all-lines)
           data-entries (next all-entries)]
-      (reduce usage-map-building-fn {} data-entries))))
+      (reduce map-building-fn {} data-entries))))
 
 
-(defn profile [profile-map tab-visited]
+(defn- profile-by-tabs [profile-map tab-visited]
   (let [desired-profile {:pages-visited [tab-visited]}]
     (cond
      (contains? profile-map desired-profile) [desired-profile (get  profile-map desired-profile)]
      :else [desired-profile #{}])))
 
+
 (defn assoc-user-with-page [profile-map new-entry]
-  (let [tab (nth new-entry 3)
-        user (nth new-entry 0)
-        p (profile profile-map tab)
+  (let [p (profile-by-tabs profile-map (tab-in new-entry))
         visits (first p)
         users (second p)]
-    (assoc profile-map visits (conj users user))))
+    (assoc profile-map visits (conj users (user-in new-entry)))))
 
-(defn report-on [profile-map]
+(defn- pages-for-user [profile-map user]
+  (or (:pages-visited (get profile-map user)) #{}))
+
+(defn assoc-page-with-user [profile-map new-entry]
+  (let [current-pages (pages-for-user profile-map (user-in new-entry))]
+    (assoc profile-map (user-in new-entry) {:pages-visited (conj current-pages (tab-in new-entry))})))
+
+(defn report-on-users-per-page [profile-map]
   (let [profiles-and-users-count
         (map (fn [p u] {:profile p :count (count u)}) (keys profile-map) (vals profile-map))]
     (reverse (sort-by last profiles-and-users-count))))
