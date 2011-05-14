@@ -10,8 +10,6 @@
              (let [map-building-fn (fn [current new-entry] (assoc current (keyword (nth new-entry 0)) (nth new-entry 1)) )]
                (map-from-csv path-to-fixture-file map-building-fn)) => {:a "b" :c "d" :e "f"}))
 
-;hypothesis: deliver pages with more usage first is optimal
-
 (facts "about usage map per page building"
        (fact "associates user with page in empty map"
              (let [new-entry ["T942486" "36272" "424001662227" "HOME_TAB" "Home" "" "01/01/2010 06:44:20"] 
@@ -36,10 +34,6 @@
                    current-map {{:pages-visited ["HOME_TAB"]} #{"T666"}}]
                (assoc-user-with-page current-map new-entry) =>
                {{:pages-visited ["HOME_TAB"]} #{"T666"}})))
-
-;hypothesis: most users use just a subset of pages, called
-;'profiles'. if we identify the largest roles we can predict the
-;optimal priotization for the backlog
 
 (facts "about report-on-users-per-page generation"
        (let [profile-map {{:pages-visited ["A_TAB" "B_TAB"]} ["T1" "T3" "T2"]
@@ -81,4 +75,38 @@
                                 "T666" {:pages-visited #{"SOME_TAB"}}}]
                (assoc-page-with-user current-map new-entry) => {"T111" {:pages-visited #{"OTHER_TAB"}}
                                                                 "T666" {:pages-visited #{"SOME_TAB"}}})))
+
+(facts "about grouping users by the page they visited"
+       (fact "maps from pages-for-user to profiles-for-user"
+             (let [pages-per-user-map {"T1" {:pages-visited #{"A" "B" "C"}}
+                                       "T2" {:pages-visited #{"A" "C"}}}]
+               (map to-user-profile-map pages-per-user-map) => (list
+                                                                {:user "T1" :profiles (list '("A") '("B") '("C") '("A" "B") '("A" "C") '("B" "C") '("A" "B" "C"))}
+                                                                {:user "T2" :profiles (list '("A") '("C") '("A" "C"))})))
+       (fact "users are aggregated by their profiles"
+             (add-user-to-consolidated-map {} {:user "T1" :profiles (list '("A") '("B") '("A" "B"))}) => {'("A" "B") '("T1") '("B") '("T1") '("A") '("T1")}
+             (add-user-to-consolidated-map {'("A" "B") '("T1") '("B") '("T1") '("A") '("T1")} {:user "T2" :profiles (list '("A"))}) => {'("A" "B") '("T1") '("B") '("T1") '("A") '("T2" "T1")})
+       
+       
+       (fact ""
+             (let [user-map {"T1" {:pages-visited #{"A" "B" "C"}}
+                             "T2" {:pages-visited #{"A" "C"}}
+                             "T3" {:pages-visited #{"A" "B" "C"}}
+                             "T4" {:pages-visited #{"A" "B" "Z"}}
+                             "T5" {:pages-visited #{"X" "Y" "Z"}}}
+                   expected-profile-map {'("A" "B" "C") '("T1" "T3")
+                                         '("A" "C")     '("T1" "T2" "T3")
+                                         '("A" "B")     '("T1" "T3" "T4")
+                                         '("X" "Y" "Z") '("T5")}]
+               
+               (consolidate-in-profiles user-map) => expected-profile-map))
+       (fact "profiles must have more than one member"
+             (let [user-map {"T1" {:pages-visited #{"A" "B"}}
+                             "T2" {:pages-visited #{"A" "C"}}
+                             "T3" {:pages-visited #{"D" "E"}}
+                             "T4" {:pages-visited #{"F" "G" "H"}}}
+                   expected-profile-map { #{"A"} #{"T1" "T2"}}]
+               
+               (consolidate-in-profiles user-map) => expected-profile-map)))
+
 

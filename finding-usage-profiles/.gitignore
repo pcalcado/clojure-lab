@@ -3,3 +3,12 @@ pom.xml
 /lib/
 /classes/
 .lein-deps-sum
+pom.xml
+*jar
+lib
+classes
+test/midje/scratch
+.cake
+*#*
+*~
+semantic.cache

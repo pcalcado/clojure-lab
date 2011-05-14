@@ -1,6 +1,6 @@
 (ns find
-  (:require clojure.contrib.duck-streams)
-  (:use clojure-csv.core))
+  (:use clojure-csv.core)
+  (:use clojure.contrib.combinatorics))
 
 (defn- user-in [csv-entry] (nth csv-entry 0))
 
@@ -14,13 +14,11 @@
           data-entries (next all-entries)]
       (reduce map-building-fn {} data-entries))))
 
-
 (defn- profile-by-tabs [profile-map tab-visited]
   (let [desired-profile {:pages-visited [tab-visited]}]
     (cond
      (contains? profile-map desired-profile) [desired-profile (get  profile-map desired-profile)]
      :else [desired-profile #{}])))
-
 
 (defn assoc-user-with-page [profile-map new-entry]
   (let [p (profile-by-tabs profile-map (tab-in new-entry))
@@ -39,3 +37,25 @@
   (let [profiles-and-users-count
         (map (fn [p u] {:profile p :count (count u)}) (keys profile-map) (vals profile-map))]
     (reverse (sort-by last profiles-and-users-count))))
+
+(defn- all-profiles-for [user-map-entry]
+  (rest (subsets (:pages-visited (second user-map-entry)))))
+
+(defn to-user-profile-map [entry]
+  {:user (first entry)
+   :profiles (all-profiles-for entry)})
+
+(defn- add-to-map-list [current-map key new-item]
+     (assoc current-map key (conj (get current-map key) new-item)))
+
+(defn add-user-to-consolidated-map [consolidated-map profile-map-entry]
+  (let [profiles-for-user (:profiles profile-map-entry)
+        user (:user profile-map-entry)]
+    (reduce (fn [a c] (add-to-map-list a c user)) consolidated-map profiles-for-user)))
+
+
+(defn consolidate-in-profiles [user-map]
+  (reduce add-user-to-consolidated-map {} (map to-user-profile-map user-map)))
+
+     
+     
