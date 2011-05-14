@@ -76,37 +76,20 @@
                (assoc-page-with-user current-map new-entry) => {"T111" {:pages-visited #{"OTHER_TAB"}}
                                                                 "T666" {:pages-visited #{"SOME_TAB"}}})))
 
-(facts "about grouping users by the page they visited"
-       (fact "maps from pages-for-user to profiles-for-user"
-             (let [pages-per-user-map {"T1" {:pages-visited #{"A" "B" "C"}}
-                                       "T2" {:pages-visited #{"A" "C"}}}]
-               (map to-user-profile-map pages-per-user-map) => (list
-                                                                {:user "T1" :profiles (list '("A") '("B") '("C") '("A" "B") '("A" "C") '("B" "C") '("A" "B" "C"))}
-                                                                {:user "T2" :profiles (list '("A") '("C") '("A" "C"))})))
-       (fact "users are aggregated by their profiles"
-             (add-user-to-consolidated-map {} {:user "T1" :profiles (list '("A") '("B") '("A" "B"))}) => {'("A" "B") '("T1") '("B") '("T1") '("A") '("T1")}
-             (add-user-to-consolidated-map {'("A" "B") '("T1") '("B") '("T1") '("A") '("T1")} {:user "T2" :profiles (list '("A"))}) => {'("A" "B") '("T1") '("B") '("T1") '("A") '("T2" "T1")})
-       
-       
-       (fact ""
+(facts "about grouping users by  pages they need"              
+       (fact "users who need the same set of pages are grouped"
              (let [user-map {"T1" {:pages-visited #{"A" "B" "C"}}
                              "T2" {:pages-visited #{"A" "C"}}
                              "T3" {:pages-visited #{"A" "B" "C"}}
                              "T4" {:pages-visited #{"A" "B" "Z"}}
-                             "T5" {:pages-visited #{"X" "Y" "Z"}}}
-                   expected-profile-map {'("A" "B" "C") '("T1" "T3")
-                                         '("A" "C")     '("T1" "T2" "T3")
-                                         '("A" "B")     '("T1" "T3" "T4")
-                                         '("X" "Y" "Z") '("T5")}]
+                             "T5" {:pages-visited #{"X" "Y" "Z"}}
+                             "T6" {:pages-visited #{"A" "C"}}}
+                   expected-grouping {#{"X" "Y" "Z"} '("T5")
+                                      #{"A" "B" "Z"} '("T4")
+                                      #{"A" "C"} '("T6" "T2")
+                                      #{"A" "B" "C"} '("T3" "T1")}]
                
-               (consolidate-in-profiles user-map) => expected-profile-map))
-       (fact "profiles must have more than one member"
-             (let [user-map {"T1" {:pages-visited #{"A" "B"}}
-                             "T2" {:pages-visited #{"A" "C"}}
-                             "T3" {:pages-visited #{"D" "E"}}
-                             "T4" {:pages-visited #{"F" "G" "H"}}}
-                   expected-profile-map { #{"A"} #{"T1" "T2"}}]
-               
-               (consolidate-in-profiles user-map) => expected-profile-map)))
+               (users-grouped-by-pages-used user-map) => expected-grouping)))
+
 
 

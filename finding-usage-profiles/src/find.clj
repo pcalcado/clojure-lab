@@ -2,9 +2,21 @@
   (:use clojure-csv.core)
   (:use clojure.contrib.combinatorics))
 
+(defn- add-to-map-list [current-map key new-item]
+     (assoc current-map key (conj (get current-map key) new-item)))
+
 (defn- user-in [csv-entry] (nth csv-entry 0))
 
 (defn- tab-in [csv-entry] (nth csv-entry 3))
+
+(defn- profile-by-tabs [profile-map tab-visited]
+  (let [desired-profile {:pages-visited [tab-visited]}]
+    (cond
+     (contains? profile-map desired-profile) [desired-profile (get  profile-map desired-profile)]
+     :else [desired-profile #{}])))
+
+(defn- pages-for-user [profile-map user]
+  (or (:pages-visited (get profile-map user)) #{}))
 
 (defn map-from-csv [path map-building-fn]
   (with-open [rdr (java.io.BufferedReader. 
@@ -14,48 +26,27 @@
           data-entries (next all-entries)]
       (reduce map-building-fn {} data-entries))))
 
-(defn- profile-by-tabs [profile-map tab-visited]
-  (let [desired-profile {:pages-visited [tab-visited]}]
-    (cond
-     (contains? profile-map desired-profile) [desired-profile (get  profile-map desired-profile)]
-     :else [desired-profile #{}])))
-
 (defn assoc-user-with-page [profile-map new-entry]
   (let [p (profile-by-tabs profile-map (tab-in new-entry))
         visits (first p)
         users (second p)]
     (assoc profile-map visits (conj users (user-in new-entry)))))
 
-(defn- pages-for-user [profile-map user]
-  (or (:pages-visited (get profile-map user)) #{}))
-
 (defn assoc-page-with-user [profile-map new-entry]
   (let [current-pages (pages-for-user profile-map (user-in new-entry))]
     (assoc profile-map (user-in new-entry) {:pages-visited (conj current-pages (tab-in new-entry))})))
+
+(defn users-grouped-by-pages-used [user-map]
+  (reduce (fn [acc cur]
+            (let [user (first cur)
+                  pages(:pages-visited (second cur))]
+              (add-to-map-list acc pages user))) {} user-map))
 
 (defn report-on-users-per-page [profile-map]
   (let [profiles-and-users-count
         (map (fn [p u] {:profile p :count (count u)}) (keys profile-map) (vals profile-map))]
     (reverse (sort-by last profiles-and-users-count))))
 
-(defn- all-profiles-for [user-map-entry]
-  (rest (subsets (:pages-visited (second user-map-entry)))))
-
-(defn to-user-profile-map [entry]
-  {:user (first entry)
-   :profiles (all-profiles-for entry)})
-
-(defn- add-to-map-list [current-map key new-item]
-     (assoc current-map key (conj (get current-map key) new-item)))
-
-(defn add-user-to-consolidated-map [consolidated-map profile-map-entry]
-  (let [profiles-for-user (:profiles profile-map-entry)
-        user (:user profile-map-entry)]
-    (reduce (fn [a c] (add-to-map-list a c user)) consolidated-map profiles-for-user)))
-
-
-(defn consolidate-in-profiles [user-map]
-  (reduce add-user-to-consolidated-map {} (map to-user-profile-map user-map)))
-
-     
-     
+(defn report-on-page-groups [users-grouped-by-pages]
+  (let [users-in-group-count (map (fn[c] [(first c) (count (second c))]) users-grouped-by-pages)]
+   (reverse (sort-by last users-in-group-count))))
