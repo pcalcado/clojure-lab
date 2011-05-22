@@ -71,7 +71,7 @@
       (. wtr write (write-csv (map (fn [e] [(hash-fn (nth e 0))
                                           (hash-fn (nth e 1))
                                           (nth e 2)
-                                          (. (nth e 3) replaceAll "PWTT" "WEB")
+                                          (. (. (nth e 3) replaceAll "PWTT" "WEB") replaceAll "POWERTEL" "BIZ")
                                           (hash-fn (nth e 4))
                                           (hash-fn (nth e 5))
                                           (nth e 6)]) data-entries))))))
