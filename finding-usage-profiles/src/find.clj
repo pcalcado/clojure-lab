@@ -51,30 +51,3 @@
   (let [users-in-group-count (map (fn[c] [(first c) (count (second c))]) users-grouped-by-pages)]
    (reverse (sort-by last users-in-group-count))))
 
-
-                                        ;anonymise source to publish dataset
-(import (java.security MessageDigest)) 
-(defn hash-fn [input]
-(let [md (MessageDigest/getInstance "SHA1")]
-(. md update (.getBytes input))
-(let [digest (.digest md)]
-(apply str (map #(format "%02x" (bit-and % 0xff)) digest)))))
-
-
-(defn anonymise-data [path new-file]
-  (with-open [rdr (java.io.BufferedReader. 
-                   (java.io.FileReader. path))
-              wtr (java.io.PrintWriter. (java.io.BufferedWriter. (java.io.FileWriter. new-file)))]
-    (let [all-lines (line-seq rdr)
-          all-entries (map (comp first parse-csv) all-lines)
-          data-entries (next all-entries)]
-      (. wtr write (write-csv (map (fn [e] [(hash-fn (nth e 0))
-                                          (hash-fn (nth e 1))
-                                          (nth e 2)
-                                          (. (. (nth e 3) replaceAll "PWTT" "WEB") replaceAll "POWERTEL" "BIZ")
-                                          (hash-fn (nth e 4))
-                                          (hash-fn (nth e 5))
-                                          (nth e 6)]) data-entries))))))
-
-
-
