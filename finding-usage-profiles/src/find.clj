@@ -1,5 +1,6 @@
 (ns find
   (:use clojure-csv.core)
+  (:use clojure.set)
   (:use clojure.contrib.combinatorics))
 
 (defn- add-to-map-list [current-map key new-item]
@@ -26,6 +27,7 @@
           data-entries (next all-entries)]
       (reduce map-building-fn {} data-entries))))
 
+;to use with csv reading
 (defn assoc-user-with-page [profile-map new-entry]
   (let [p (profile-by-tabs profile-map (tab-in new-entry))
         visits (first p)
@@ -36,12 +38,28 @@
   (let [current-pages (pages-for-user profile-map (user-in new-entry))]
     (assoc profile-map (user-in new-entry) {:pages-visited (conj current-pages (tab-in new-entry))})))
 
+;to process the result
 (defn users-grouped-by-pages-used [user-map]
   (reduce (fn [acc cur]
             (let [user (first cur)
                   pages(:pages-visited (second cur))]
               (add-to-map-list acc pages user))) {} user-map))
 
+(defn only-supergroups-of [desired-group all-groups]
+  (remove #(= % desired-group)
+          (filter (fn [current-group]
+                    (let [pages-in-desired-group (first desired-group)
+                          pages-in-current-group (first current-group)]
+                      (subset? pages-in-desired-group pages-in-current-group)))
+                  all-groups)))
+
+
+(defn users-grouped-with-factored-subsets [users-grouped-by-pages]
+  (reduce (fn [acc cur]
+            (let [subsets (filter only-supergroups-of cur users-grouped-by-pages)]))))
+
+
+;sorted and aggregated results
 (defn report-on-users-per-page [profile-map]
   (let [profiles-and-users-count
         (map (fn [p u] {:profile p :count (count u)}) (keys profile-map) (vals profile-map))]
@@ -50,4 +68,3 @@
 (defn report-on-page-groups [users-grouped-by-pages]
   (let [users-in-group-count (map (fn[c] [(first c) (count (second c))]) users-grouped-by-pages)]
    (reverse (sort-by last users-in-group-count))))
-

@@ -76,6 +76,19 @@
                (assoc-page-with-user current-map new-entry) => {"T111" {:pages-visited #{"OTHER_TAB"}}
                                                                 "T666" {:pages-visited #{"SOME_TAB"}}})))
 
+;.;. FAIL at (NO_SOURCE_FILE:1)
+;.;.     Expected: {#{"A" "B" "C"} ("T3"), #{"A" "B" "Y" "Z"} ("T5" "T6")}
+;.;.       Actual: ([#{"A" "B" "C"} ("T3")] [#{"A" "B" "Y" "Z"} ("T5" "T6")])
+;.;. 
+;.;. FAIL at (NO_SOURCE_FILE:1)
+;.;.     Expected: {#{"A" "B"} ("T1" "T2" "T4"), #{"B"} ("T2"), #{"A" "B" "C"} ("T3" "T1" "T2" "T4"), #{"A"} ("T4"), #{"Z"} ("T5" "T6")}
+;.;.       Actual: java.lang.IllegalArgumentException: Wrong number of args (1) passed to: core$r
+;.;.               find$users_grouped_with_factored_subsets.invoke(NO_SOURCE_FILE:1)
+;.;.               t_find$eval8465$fn__8466$fn__8477$fn__8478.invoke(NO_SOURCE_FILE:1)
+;.;.               t_find$eval8465$fn__8466$fn__8477.invoke(NO_SOURCE_FILE:1)
+;.;.               t_find$eval8465$fn__8466.invoke(NO_SOURCE_FILE:1)
+;.;.               t_find$eval8465.invoke(NO_SOURCE_FILE:1)
+;.;.               t_find$eval8463.invoke(NO_SOURCE_FILE)
 (facts "about grouping users by  pages they need"              
        (fact "users who need the same set of pages are grouped"
              (let [user-map {"T1" {:pages-visited #{"A" "B" "C"}}
@@ -89,7 +102,34 @@
                                       #{"A" "C"} '("T6" "T2")
                                       #{"A" "B" "C"} '("T3" "T1")}]
                
-               (users-grouped-by-pages-used user-map) => expected-grouping)))
+               (users-grouped-by-pages-used user-map) => expected-grouping))
+
+       (fact "groups can be subsets of other supergroups"
+             (let [all-groups {#{"A" "B"} '("T1")
+                               #{"B"} '("T2")
+                               #{"A" "B" "C"} '("T3")
+                               #{"A"} '("T4")
+                               #{"A" "B" "Y" "Z"} '("T5" "T6")}
+                   a-group (first all-groups)                   
+                   only-supergroups {#{"A" "B" "C"} '("T3")
+                                     #{"A" "B" "Y" "Z"} '("T5" "T6")}]               
+               (only-supergroups-of a-group all-groups) => only-supergroups))
+       
+       (fact "users in a subgroup are also part of the supergroup"
+             (let [user-grouping {#{"A" "B"} '("T1")
+                                  #{"B"} '("T2")
+                                  #{"A" "B" "C"} '("T3")
+                                  #{"A"} '("T4")
+                                  #{"Z"} '("T5" "T6")}
+
+                   factored-group {#{"A" "B"} '("T1" "T2" "T4")
+                                   #{"B"} '("T2")
+                                   #{"A" "B" "C"} '("T3" "T1" "T2" "T4" )
+                                   #{"A"} '("T4")
+                                   #{"Z"} '("T5" "T6")}]
+               
+               (users-grouped-with-factored-subsets user-grouping) => factored-group)))
+
 
 
 
